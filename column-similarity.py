@@ -1,5 +1,9 @@
 import pandas as pd
+import openclean_metanome.config as config
+from openclean_metanome.download import download_jar
+from openclean_metanome.algorithm.hyucc import hyucc
 
+download_jar(verbose = True)
 
 dict_blocks = {}
 
@@ -22,13 +26,22 @@ def do_blocking(de_duplicated_set: list,attribute_name):
             else:
                 dict_blocks[asc.lower()] = [i]
 
+
+def get_uccs(df, max_ucc_size = 3, **kwargs):
+    env = {config.METANOME_JARPATH: config.JARFILE()}
+    
+    keys = hyucc(df, env = env, max_ucc_size = max_ucc_size, **kwargs)
+    
+    return keys
+
+
 def main():
-    nation = pd.read_csv(filepath_or_buffer="/home/nachiket/dremio_use_case/dataset/nation.tbl/nation.tbl",delimiter='|', header = None)
+    nation = pd.read_csv(filepath_or_buffer="./dataset/nation.tbl",delimiter='|', header = None)
     nation_columns = ["nationkey", "nationname", "regionkey", "comment", 'nan']
     nation.columns = nation_columns
     nation = nation.drop(columns=['nan'])
 
-    customer = pd.read_csv("/home/nachiket/dremio_use_case/dataset/nation.tbl/customer.tbl/customer.tbl",delimiter='|')
+    customer = pd.read_csv("./dataset/customer.tbl",delimiter='|')
     customer_columns = ["customerkey", "name", "address", "nationkey", 'phone', 'acctbal', 'mktsegment', 'comment', 'nan']
     customer.columns = customer_columns
     customer = customer.drop(columns=['nan'])
@@ -37,17 +50,23 @@ def main():
     print(customer.head())
 
 
-# keys = hyucc(nation, max_ucc_size=3, env=env)
-
-# for ucc in keys:
-#     print(ucc)
-
     dependent_attribute = ['nationkey']
     reference_attribute = ['nationkey']
 
     do_blocking(customer.values.tolist(),3)
     print(len(dict_blocks))
 
+    customer_keys = get_uccs(customer)
+    print("Customer UCCs:")
+    for ucc in customer_keys:
+        print(ucc)
+        
+    print()
+    
+    nation_keys = get_uccs(nation)
+    print("Nation UCCs:")
+    for ucc in nation_keys:
+        print(ucc)
 
 if __name__ == "__main__":
     main()
